@@ -1,0 +1,233 @@
+import React, { useState, useEffect, useRef } from "react";
+
+const Timer = () => {
+  const [activeSide, setActiveSide] = useState("green");
+  const [running, setRunning] = useState(true);
+
+  const [greenTotal, setGreenTotal] = useState(0);
+  const [redTotal, setRedTotal] = useState(0);
+
+  const [greenLapTime, setGreenLapTime] = useState(0);
+  const [redLapTime, setRedLapTime] = useState(0);
+
+  const [greenLapCount, setGreenLapCount] = useState(1);
+  const [redLapCount, setRedLapCount] = useState(1);
+
+  const [greenLaps, setGreenLaps] = useState([]);
+  const [redLaps, setRedLaps] = useState([]);
+
+  const startTimeRef = useRef(Date.now());
+  const currentLapRef = useRef(null);
+
+  // Format milliseconds into mm:ss.SSS
+  const format = (ms) => {
+    const m = Math.floor(ms / 60000);
+    const s = Math.floor((ms % 60000) / 1000);
+    const msPart = ms % 1000;
+    return `${String(m).padStart(2, "0")}:${String(s).padStart(
+      2,
+      "0"
+    )}.${String(msPart).padStart(3, "0")}`;
+  };
+
+  // Update function
+  const update = () => {
+    if (!running) return;
+    const now = Date.now();
+    const diff = now - startTimeRef.current;
+
+    if (activeSide === "green") {
+      setGreenTotal((prev) => prev + diff);
+      setGreenLapTime((prev) => prev + diff);
+
+      if (currentLapRef.current) {
+        currentLapRef.current.text = `Lap ${greenLapCount} - ${format(
+          greenLapTime + diff
+        )}`;
+      }
+    } else {
+      setRedTotal((prev) => prev + diff);
+      setRedLapTime((prev) => prev + diff);
+
+      if (currentLapRef.current) {
+        currentLapRef.current.text = `Lap ${redLapCount} - ${format(
+          redLapTime + diff
+        )}`;
+      }
+    }
+
+    startTimeRef.current = now;
+  };
+
+  // Create new lap
+  const createNewLap = () => {
+    const lap = { id: Date.now(), text: "" };
+    if (activeSide === "green") {
+      lap.text = `Lap ${greenLapCount} - 00:00.000`;
+      setGreenLaps((prev) => [lap, ...prev]);
+    } else {
+      lap.text = `Lap ${redLapCount} - 00:00.000`;
+      setRedLaps((prev) => [lap, ...prev]);
+    }
+    currentLapRef.current = lap;
+  };
+
+  // Switch side
+  const switchSide = () => {
+    update();
+    if (activeSide === "green") {
+      setGreenLapTime(0);
+      setGreenLapCount((prev) => prev + 1);
+      setActiveSide("red");
+    } else {
+      setRedLapTime(0);
+      setRedLapCount((prev) => prev + 1);
+      setActiveSide("green");
+    }
+    createNewLap();
+    startTimeRef.current = Date.now();
+  };
+
+  // Pause timer
+  const pauseTimer = () => {
+    setRunning((prev) => !prev);
+    startTimeRef.current = Date.now();
+  };
+
+  // Reset timer
+  const resetTimer = () => {
+    setRunning(true);
+    setGreenTotal(0);
+    setRedTotal(0);
+    setGreenLapTime(0);
+    setRedLapTime(0);
+    setGreenLapCount(1);
+    setRedLapCount(1);
+    setGreenLaps([]);
+    setRedLaps([]);
+    setActiveSide("green");
+    createNewLap();
+    startTimeRef.current = Date.now();
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKey = (e) => {
+      if (e.code === "Space") {
+        e.preventDefault();
+        switchSide();
+      }
+      if (e.code === "KeyR") {
+        e.preventDefault();
+        resetTimer();
+      }
+      if (e.code === "KeyP") {
+        e.preventDefault();
+        pauseTimer();
+      }
+    };
+    window.addEventListener("keydown", handleKey);
+    return () => window.removeEventListener("keydown", handleKey);
+  });
+
+  // Timer interval
+  useEffect(() => {
+    const interval = setInterval(update, 10);
+    return () => clearInterval(interval);
+  });
+
+  // Inline styles
+  const boardStyle = {
+    display: "flex",
+    gap: "30px",
+    width: "92%",
+    height: "90%",
+    justifyContent: "center",
+    alignItems: "center",
+    margin: "0 auto",
+    fontFamily: "'Inter', sans-serif",
+  };
+
+  const sideStyle = (color, isActive) => ({
+    flex: 1,
+    borderRadius: "40px",
+    display: "flex",
+    flexDirection: "column",
+    padding: "30px",
+    transition: "0.3s ease",
+    background: color,
+    filter: isActive ? "brightness(1)" : "brightness(0.6)",
+    color: "white",
+  });
+
+  const titleStyle = {
+    fontSize: "1.8rem",
+    fontWeight: 700,
+    textAlign: "center",
+    letterSpacing: "1px",
+    opacity: 0.9,
+  };
+
+  const lapCurrentStyle = {
+    fontSize: "6vw",
+    fontWeight: 800,
+    textAlign: "center",
+    marginTop: "20px",
+  };
+
+  const totalTimeStyle = {
+    fontSize: "1rem",
+    opacity: 0.85,
+    textAlign: "center",
+    marginTop: "10px",
+  };
+
+  const lapsStyle = {
+    marginTop: "25px",
+    overflowY: "auto",
+    flexGrow: 1,
+    fontSize: "0.9rem",
+  };
+
+  const lapItemStyle = {
+    padding: "6px 0",
+    borderBottom: "1px solid rgba(255,255,255,0.2)",
+  };
+
+  // Initialize first lap
+  useEffect(() => createNewLap(), []);
+
+  return (
+    <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100vh", background: "#1e1e1e" }}>
+      <div style={boardStyle}>
+        <div style={sideStyle("#16a34a", activeSide === "green")}>
+          <div style={titleStyle}>Focus</div>
+          <div style={lapCurrentStyle}>{format(greenLapTime)}</div>
+          <div style={totalTimeStyle}>Total: {format(greenTotal)}</div>
+          <div style={lapsStyle}>
+            {greenLaps.map((lap) => (
+              <div key={lap.id} style={lapItemStyle}>
+                {lap.text}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={sideStyle("#dc2626", activeSide === "red")}>
+          <div style={titleStyle}>Break</div>
+          <div style={lapCurrentStyle}>{format(redLapTime)}</div>
+          <div style={totalTimeStyle}>Total: {format(redTotal)}</div>
+          <div style={lapsStyle}>
+            {redLaps.map((lap) => (
+              <div key={lap.id} style={lapItemStyle}>
+                {lap.text}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Timer;
